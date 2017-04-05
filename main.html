@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+        #game_canvas {
+            background-color: black;
+
+        }
+    </style>
+    <script>
+        var gameCanvas;
+        var ctx;
+        function resizeCanvas() {
+            gameCanvas.width = document.body.clientWidth;
+            gameCanvas.height = window.innerHeight;
+        }
+        function init() {
+            gameCanvas = document.getElementById('game_canvas');
+            ctx = gameCanvas.getContext('2d');
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            initMainLoop();
+            document.body.style.overflow = "hidden";
+        }
+
+        function initMainLoop() {
+            var gameOver = false;
+            var before;
+            var after;
+            var timeDiff;
+            var i = 0;
+            var interval = setInterval(mainLoop, (1000/60));
+            var entities = [];
+            var states = {
+                current : 0,
+                init : 0,
+                playing : 1,
+                gameOver : 2
+            };
+
+            var boxes = [];
+            function mainLoop() {
+                before = new Date();
+
+                update();
+                after = new Date();
+
+                timeDiff = after.getMilliseconds() - before.getMilliseconds();
+
+                i++;
+                render();
+
+                if (gameOver) {
+                    clearInterval(interval);
+                }
+
+            }
+            var offsetX;
+            var offsetY;
+            function render() {
+                ctx.clearRect(0,0,gameCanvas.width, gameCanvas.height);
+                var middleX = gameCanvas.width/2;
+                var middleY = gameCanvas.height/2;
+                var xTotal = 0, yTotal = 0;
+                var numOfEnts = entities.length;
+                for (var i = 0; i < entities.length; i++) {
+                    xTotal += entities[i].x;
+                    yTotal += entities[i].y;
+                }
+                offsetX = middleX - xTotal/numOfEnts;
+                offsetY = middleY - yTotal/numOfEnts;
+
+
+                for(var i = 0; i < entities.length; i++) {
+                    entities[i].render(offsetX, offsetY);
+                }
+
+
+
+            }
+
+            function handleClick(e) {
+                i = entities.length;
+                entities.push(new circle(e.clientX - offsetX, e.clientY - offsetY, 10));
+            }
+
+
+
+            function update() {
+
+
+
+                switch (states.current) {
+                    case 0:
+                        document.addEventListener('click', handleClick, false)
+
+                        states.current = 1;
+                        var mainCircle = new circle(gameCanvas.width/2, gameCanvas.height/2, 50);
+                        entities[0] = mainCircle;
+
+                        break;
+                    case 1:
+
+                        var vector = {
+                            x : 0,
+                            y : 0
+                        };
+
+                        for (i = 0; i < entities.length; i++) {
+                            var x = 0;
+                            var y = 0;
+
+                            var xNorm, yNorm;
+                            var rads;
+                            for (j = 0; j < entities.length; j++) {
+
+                                if (i !== j) {
+                                    x = entities[j].x - entities[i].x;
+                                    y = entities[j].y - entities[i].y;
+
+                                    var length = Math.sqrt(x * x + y * y);
+
+                                    xNorm = x/length;
+                                    yNorm = y/length;
+                                    vector.y = yNorm  / 100;
+                                    vector.x = xNorm  / 100;
+                                    rads = entities[i].r + entities[j].r;
+                                    if (length < rads) {
+                                        if (entities[i].touching === false) {
+                                            entities[i].touching = true;
+                                            handleTouch(i);
+                                        }
+                                        entities[i].undoTouch();
+                                        entities[i].x = entities[j].x - xNorm * rads;
+                                        entities[i].y = entities[j].y - yNorm * rads;
+
+
+
+                                    }
+
+                                }
+
+                                entities[i].updateVelocity(vector.x, vector.y);
+
+
+
+                                entities[i].move();
+
+
+                            }
+
+
+
+                        }
+
+                        break;
+
+                }
+            }
+
+            function circle(x,y,r) {
+                this.x = x;
+                this.y = y;
+                this.r = r;
+                var rand1 = Math.round(Math.random()*200);
+                var rand2 = Math.round(Math.random()*200);
+                var rand3 = Math.round(Math.random()*200);
+
+
+                this.touching = false;
+
+                this.undoTouch = function() {
+                    var timeOut = setTimeout(function() {this.touching = false; console.log('undoing');}, 500);
+                };
+                this.getR = function() {
+                    return this.r;
+                };
+                this.setR = function(rad) {
+                    this.r = rad;
+                };
+
+
+                this.render = function(offestX, offsetY) {
+
+
+
+                    ctx.beginPath();
+                    ctx.arc(this.x + offestX, this.y + offsetY, this.r, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = "rgb(" + rand1 + "," + rand2 + "," + rand3 + ")";
+                    ctx.fill();
+                    ctx.lineWidth = 5;
+
+                };
+                this.velocity = {
+                    x : 0,
+                    y : 0
+                }
+                this.updateVelocity = function(xpow ,ypow) {
+                    this.velocity.x += xpow;
+                    this.velocity.y += ypow;
+                }
+
+                this.move = function() {
+
+                    this.x += this.velocity.x;
+                    this.y += this.velocity.y;
+
+                };
+            }
+        }
+
+
+
+        window.addEventListener('load', init, false);
+    </script>
+</head>
+
+<body>
+<canvas id="game_canvas"></canvas>
+</body>
+</html>
